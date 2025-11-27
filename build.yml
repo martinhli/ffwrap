@@ -1,0 +1,31 @@
+name: Build ffwrap.dll (Windows)
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Download FFmpeg 6.1.1 full shared build
+      run: |
+        curl -L -o ffmpeg.zip https://www.gyan.dev/ffmpeg/builds/packages/ffmpeg-6.1.1-full_build-shared.zip
+        tar -xf ffmpeg.zip
+
+    - name: Build ffwrap.dll
+      run: |
+        cl /LD ffwrap.c ^
+          /Iffmpeg-6.1.1-full_build-shared/include ^
+          /link /LIBPATH:ffmpeg-6.1.1-full_build-shared/lib ^
+          avformat.lib avcodec.lib avutil.lib swscale.lib swresample.lib ^
+          /OUT:ffwrap.dll
+
+    - name: Upload DLL artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: ffwrap-windows
+        path: ffwrap.dll
