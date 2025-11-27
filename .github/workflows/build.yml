@@ -9,20 +9,65 @@ jobs:
     runs-on: windows-latest
 
     steps:
-    - uses: actions/checkout@v4
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup MSVC
+      uses: ilammy/msvc-dev-cmd@v1
 
     - name: Download FFmpeg 6.1.1 full shared build
+      shell: pwsh
       run: |
-        curl -L -o ffmpeg.zip https://www.gyan.dev/ffmpeg/builds/packages/ffmpeg-6.1.1-full_build-shared.zip
-        tar -xf ffmpeg.zip
+        Write-Host "Downloading FFmpeg 6.1.1 full shared build..."
+        Invoke-WebRequest `
+          -Uri "https://www.gyan.dev/ffmpeg/builds/packages/ffmpeg-6.1.1-full_build-shared.zip" `
+          -OutFile "ffmpeg.zip"
+
+        Write-Host "Downloaded ffmpeg.zip:"
+        Get-Item ffmpeg.zip | Format-List Length, FullName
+
+        Write-Host "Expanding archive..."
+        Expand-Archive -Path "ffmpeg.zip" -DestinationPath "ffmpeg"
+
+        Write-Host "Contents of ffmpeg/:"
+        Get-ChildItem "ffmpeg"
 
     - name: Build ffwrap.dll
+      shell: pwsh
       run: |
-        cl /LD ffwrap.c ^
-          /Iffmpeg-6.1.1-full_build-shared/include ^
-          /link /LIBPATH:ffmpeg-6.1.1-full_build-shared/lib ^
-          avformat.lib avcodec.lib avutil.lib swscale.lib swresample.lib ^
+        Write-Host "Locating extracted FFmpeg folder..."
+        $ffdir = Get-ChildItem -Directory "ffmpeg" | Select-Object -First 1
+        if (-not $ffdir) {
+          Write-Error "No FFmpeg directory found under 'ffmpeg'."
+          exit 1
+        }
+
+        Write-Host "Using FFmpeg dir: $($ffdir.FullName)"
+
+        $inc = Join-Path $ffdir.FullName "include"
+        $lib = Join-Path $ffdir.FullName "lib"
+
+        Write-Host "Include path: $inc"
+        Write-Host "Lib path:     $lib"
+
+        if (-not (Test-Path $inc)) {
+          Write-Error "Include directory not found: $inc"
+          exit 1
+        }
+        if (-not (Test-Path $lib)) {
+          Write-Error "Lib directory not found: $lib"
+          exit 1
+        }
+
+        Write-Host "Building ffwrap.dll with cl..."
+        cl /LD ffwrap.c `
+          /I"$inc" `
+          /link /LIBPATH:"$lib" `
+          avformat.lib avcodec.lib avutil.lib swscale.lib swresample.lib `
           /OUT:ffwrap.dll
+
+        Write-Host "Build step finished. Checking output..."
+        Get-Item ffwrap.dll
 
     - name: Upload DLL artifact
       uses: actions/upload-artifact@v4
