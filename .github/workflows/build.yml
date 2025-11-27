@@ -18,10 +18,9 @@ jobs:
     - name: Download FFmpeg 6.1.1 full shared build
       shell: pwsh
       run: |
-        Write-Host "Downloading FFmpeg 6.1.1 full shared build..."
-        Invoke-WebRequest `
-          -Uri "https://www.gyan.dev/ffmpeg/builds/packages/ffmpeg-6.1.1-full_build-shared.zip" `
-          -OutFile "ffmpeg.zip"
+        Write-Host "Downloading FFmpeg 6.1.1 full shared build from GitHub mirror..."
+        $url = "https://github.com/GyanD/codexffmpeg/releases/download/6.1.1/ffmpeg-6.1.1-full_build-shared.zip"
+        Invoke-WebRequest -Uri $url -OutFile "ffmpeg.zip"
 
         Write-Host "Downloaded ffmpeg.zip:"
         Get-Item ffmpeg.zip | Format-List Length, FullName
